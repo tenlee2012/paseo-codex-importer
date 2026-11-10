@@ -1,0 +1,14 @@
+{
+  "id": "codex-importer",
+  "name": "Codex session importer",
+  "description": "Find and import local Codex sessions, including archived conversations.",
+  "media": ["assets/desktop-light.png", "assets/compact-dark.png"],
+  "translations": {
+    "zh-CN": {
+      "name": "Codex 会话导入",
+      "description": "查找并导入本机 Codex 历史，支持已归档会话。"
+    }
+  },
+  "requirements": { "paseo": ">=0.15.4" },
+  "build": [["npm", "ci", "--omit=dev", "--ignore-scripts", "--legacy-peer-deps"]]
+}

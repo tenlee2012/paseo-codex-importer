@@ -1,0 +1,58 @@
+{
+  "name": "paseo-codex-importer",
+  "version": "0.1.0",
+  "description": "Import active and archived local Codex sessions into Paseo.",
+  "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tenlee2012/paseo-codex-importer.git"
+  },
+  "files": [
+    "paseo-plugin.json",
+    "index.client.tsx",
+    "index.server.ts",
+    "client",
+    "server",
+    "shared",
+    "assets",
+    "OVERVIEW.md",
+    "OVERVIEW.zh-CN.md",
+    "README.md",
+    "README.zh-CN.md",
+    "PRIVACY.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "lint": "biome lint .",
+    "format": "biome format --write .",
+    "format:check": "biome format .",
+    "test": "vitest run --bail=1",
+    "test:browser": "node tests/browser.mjs",
+    "check:privacy": "node scripts/check-privacy.mjs"
+  },
+  "dependencies": {
+    "@getpaseo/client": "0.15.4"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.3.10",
+    "@getpaseo/plugin": "0.15.4",
+    "@getpaseo/protocol": "0.15.4",
+    "@tanstack/react-query": "5.90.16",
+    "@types/node": "22.19.7",
+    "@types/react": "19.1.17",
+    "esbuild": "0.25.12",
+    "playwright": "1.56.1",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "react-native": "0.81.5",
+    "react-native-web": "0.21.2",
+    "typescript": "5.9.3",
+    "vitest": "4.1.6",
+    "zod": "4.4.3"
+  },
+  "engines": {
+    "node": ">=22.19.0"
+  }
+}
