@@ -90,7 +90,7 @@ export class CodexConnection {
       clientInfo: {
         name: "paseo_codex_importer",
         title: "Codex session importer",
-        version: "0.2.1",
+        version: "0.2.2",
       },
     });
     this.write({ method: "initialized", params: {} });

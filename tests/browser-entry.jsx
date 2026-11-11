@@ -20,6 +20,7 @@ let panelTitle;
 let commandTitle;
 contribute({
   addWorkspacePanel(panel) {
+    window.importerPanelLocations = panel.locations;
     panelTitle = panel.title;
     return () => {};
   },

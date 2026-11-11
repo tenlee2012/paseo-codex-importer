@@ -2,7 +2,7 @@
 
 [English](README.md)
 
-在工作区 **+** 菜单增加 **导入 Codex 会话**，支持找回并导入本机已归档的 Codex 历史。界面跟随 Paseo 客户端的语言设置。
+在工作区和 Explorer 的 **+** 菜单增加 **导入 Codex 会话**，支持找回并导入本机已归档的 Codex 历史。界面跟随 Paseo 客户端的语言设置。
 
 ![使用合成数据的中文导入面板](assets/compact-dark.png)
 
@@ -24,12 +24,12 @@ paseo plugin install github:tenlee2012/paseo-codex-importer
 paseo plugin update codex-importer
 ```
 
-安装本次发布版本可在安装命令后加 `--ref v0.2.1`。现有安装也可执行 `paseo plugin update codex-importer --ref v0.2.1`，直接更新到指定版本。
+安装本次发布版本可在安装命令后加 `--ref v0.2.2`。现有安装也可执行 `paseo plugin update codex-importer --ref v0.2.2`，直接更新到指定版本。
 
 ## 使用
 
 1. 进入你希望继续工作的目标工作区。
-2. 点击 **+ → 导入 Codex 会话**，也可以从命令中心打开。
+2. 在工作区或 Explorer 面板点击 **+ → 导入 Codex 会话**。手机端使用 **文件／更改** 旁边的 **+**。也可以从命令中心打开。
 3. 默认选择 **当前工作区**。切换 **所有路径** 可查看本主机其他目录的历史；每条会话会显示原目录，筛选区上方始终显示导入目标。
 4. 搜索标题，或选择 **全部／已归档／未归档**。路径范围和归档状态独立筛选；切换路径范围重新开始分页，同时保留搜索和归档筛选。
 5. 点击 **导入**。所有成功导入的会话都归属打开本面板的当前工作区，后续工作目录也使用当前目录。

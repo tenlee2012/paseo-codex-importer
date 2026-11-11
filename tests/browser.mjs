@@ -34,6 +34,10 @@ const failures = [];
 page.on("pageerror", (error) => failures.push(error.message));
 try {
   await page.goto(server.url);
+  const panelLocations = await page.evaluate(() => window.importerPanelLocations);
+  for (const location of ["workspace", "explorer"]) {
+    assert.ok(panelLocations?.includes(location), `Importer must appear in the ${location} + menu`);
+  }
   await page.getByText("Review sample pull request", { exact: true }).waitFor();
   assert.equal(await page.getByRole("button", { name: /^导入 / }).count(), 50);
   await page.getByRole("button", { name: "加载更多会话", exact: true }).click();
@@ -247,7 +251,7 @@ try {
   );
   assert.deepEqual(failures, []);
   process.stdout.write(
-    "Browser checks passed: current/all paths, scoped pagination and search, original-directory labels, same-directory restore, cross-directory copy, duplicate prevention, nine live locales, preserved state, and wide/compact layouts.\n",
+    "Browser checks passed: workspace/Explorer panel registration, current/all paths, scoped pagination and search, original-directory labels, same-directory restore, cross-directory copy, duplicate prevention, nine live locales, preserved state, and wide/compact layouts.\n",
   );
 } catch (error) {
   await page.screenshot({ path: ".artifacts/browser-failure.png" });

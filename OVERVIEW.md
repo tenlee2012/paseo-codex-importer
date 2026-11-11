@@ -1,6 +1,6 @@
 # Codex session importer
 
-Adds **Import Codex sessions** to the workspace **+** menu and Command Center. Search local Codex history and import it into the current workspace. Start with the current directory or switch to **All paths**; archive filters and title search work in either scope.
+Adds **Import Codex sessions** to the workspace and Explorer (**Files / Changes**) **+** menus and Command Center. Search local Codex history and import it into the current workspace. Start with the current directory or switch to **All paths**; archive filters and title search work in either scope.
 
 Same-directory imports restore the original Codex thread and reuse a matching archived Paseo agent. Other directories copy history into a new thread in the current workspace, keeping the source conversation. The working directory always follows the destination. An archived source is temporarily unarchived for copying and re-archived before the copy is imported. Project files are not copied. Already-open conversations and sources already copied into the current workspace are excluded. Listing leaves archive state unchanged.
 

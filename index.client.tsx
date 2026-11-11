@@ -7,7 +7,7 @@ export default function contribute(client: PluginClientContext) {
     id: "import-codex",
     title: messages.message("title"),
     icon: "Import",
-    locations: ["workspace"],
+    locations: ["workspace", "explorer"],
     Component: CodexImportPanel,
   });
   const removeCommand = client.addCommandCenterItem({

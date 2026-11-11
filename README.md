@@ -2,7 +2,7 @@
 
 [简体中文](README.zh-CN.md)
 
-Adds **Import Codex sessions** to the workspace **+** menu. Find and reopen local Codex conversations, including archived history. The interface follows the language selected in Paseo.
+Adds **Import Codex sessions** to the workspace and Explorer **+** menus. Find and reopen local Codex conversations, including archived history. The interface follows the language selected in Paseo.
 
 ![The importer displaying synthetic conversations](assets/desktop-light.png)
 
@@ -24,12 +24,12 @@ For an existing GitHub installation, review and apply the update with:
 paseo plugin update codex-importer
 ```
 
-To install this release directly, add `--ref v0.2.1` to the install command. To update an existing installation to this release without a prompt, use `paseo plugin update codex-importer --ref v0.2.1`.
+To install this release directly, add `--ref v0.2.2` to the install command. To update an existing installation to this release without a prompt, use `paseo plugin update codex-importer --ref v0.2.2`.
 
 ## Use
 
 1. Open the workspace where you want to continue the conversation.
-2. Select **+ → Import Codex sessions**. The action is also available in the Command Center.
+2. Select **+ → Import Codex sessions** in the workspace or Explorer panel. On mobile, use **+** beside **Files / Changes**. The action is also available in the Command Center.
 3. **Current workspace** is selected by default. Switch to **All paths** to include history from other directories on this host. Each row then shows its original directory; the import destination stays visible above the filters.
 4. Search by title or choose **All**, **Archived**, or **Unarchived**. The path and archive filters are independent. Changing paths starts pagination for that scope while keeping the search and archive filter.
 5. Click **Import**. Every successful import belongs to the workspace that opened this panel and uses its directory for subsequent work.
