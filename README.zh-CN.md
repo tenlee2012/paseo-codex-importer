@@ -2,9 +2,9 @@
 
 [English](README.md)
 
-在工作区 **+** 菜单增加 **导入 Codex 会话**，支持找回并导入本机已归档的 Codex 历史。
+在工作区 **+** 菜单增加 **导入 Codex 会话**，支持找回并导入本机已归档的 Codex 历史。界面跟随 Paseo 客户端的语言设置。
 
-![使用合成数据的导入面板](assets/desktop-light.png)
+![使用合成数据的中文导入面板](assets/compact-dark.png)
 
 ## 安装
 
@@ -17,6 +17,14 @@ paseo plugin install github:tenlee2012/paseo-codex-importer
 ```
 
 也可在插件设置中填写 `github:tenlee2012/paseo-codex-importer`。安装时会从公共 npm 下载锁定的运行依赖。Paseo 插件属于受信任代码，拥有 daemon 用户的文件和进程访问权限。
+
+已安装 GitHub 版的用户可检查并确认更新：
+
+```sh
+paseo plugin update codex-importer
+```
+
+安装本次发布版本可在安装命令后加 `--ref v0.1.1`。现有安装也可执行 `paseo plugin update codex-importer --ref v0.1.1`，直接更新到指定版本。
 
 ## 使用
 
@@ -33,6 +41,14 @@ Codex 会话 ID 保持不变。若 Paseo 中存在同 provider、同目录的已
 
 若 Codex 已恢复、但 Paseo 导入失败，会话可能保留在 Codex 的未归档列表中，刷新后重试即可。
 
+## 语言
+
+插件跟随每个客户端的 **Paseo → 设置 → 语言**。选择“系统”时，使用 Paseo 解析后的系统语言。切换语言立即更新菜单、面板标题、按钮、无障碍标签、状态和错误提示，并保留搜索草稿、筛选条件、已加载列表及导入反馈。
+
+支持英语（`en`）、阿拉伯语（`ar`）、西班牙语（`es`）、法语（`fr`）、日语（`ja`）、韩语（`ko`）、巴西葡萄牙语（`pt-BR`）、俄语（`ru`）和简体中文（`zh-CN`）。日期、数字与复数形式按客户端语言格式显示；插件未提供的其他语言回退到英文。多个客户端可以各自使用不同语言。
+
+会话标题、工作区名称、路径和 provider 名称保留原始内容。语言资源随插件打包，无需外部翻译服务，也不会上传会话来翻译。从 v0.1.0 更新后，固定中文界面会改为跟随 Paseo 语言；如果仍显示旧缓存，可刷新客户端。
+
 ## 隐私和数据流
 
 后端读取当前主机 Paseo 中的 Codex 启动命令和环境变量，调用本机 `codex app-server`。为使用官方 Node 导入接口，还会读取本机 Paseo 身份和连接凭据；凭据只留在后端内存。原始进程 stderr、provider 错误和凭据不会返回客户端或写入插件日志。
@@ -48,6 +64,7 @@ npm ci --legacy-peer-deps --ignore-scripts
 npm run typecheck
 npm run lint
 npm run format:check
+npm test -- tests/translations.test.ts
 npm test -- tests/codex.integration.test.ts tests/catalog.integration.test.ts tests/imports.integration.test.ts
 npm run test:browser
 npm run check:privacy
@@ -55,7 +72,7 @@ npm run check:privacy
 
 集成测试要求安装 Paseo 和 Codex CLI。浏览器检查要求 Playwright Chromium（`npx playwright install chromium`），也可通过 `PLAYWRIGHT_CHROMIUM_EXECUTABLE` 指定现有 Chromium。
 
-测试使用临时 Codex home、合成历史及独立 Paseo daemon，监听系统分配的本机端口，不提交模型轮次。清理仅停止测试自己的 daemon。浏览器检查使用真实组件，通过真实插件 RPC 访问隔离的后端；构建和诊断文件保存在被忽略的 `.artifacts/`。
+测试使用临时 Codex home、合成历史及独立 Paseo daemon，监听系统分配的本机端口，不提交模型轮次。清理仅停止测试自己的 daemon。翻译测试使用 Paseo 真实翻译引擎；浏览器检查使用真实组件与插件 RPC，覆盖 9 种语言热切换、独立客户端语言、日期格式及查询状态保留。构建和诊断文件保存在被忽略的 `.artifacts/`。
 
 本地安装使用 `paseo plugin install /absolute/path/to/checkout`。修改后执行 `paseo plugin reload codex-importer`，无需重启 daemon。
 

@@ -17,6 +17,7 @@ export async function startBrowserServer() {
   sessions[2].title = "Investigate sample test failure";
   const fixture = await createDaemonFixture(sessions);
   let importRequests = 0;
+  let listRequests = 0;
   const server = createServer(async (request, response) => {
     try {
       if (request.url === "/bundle.js") {
@@ -30,6 +31,7 @@ export async function startBrowserServer() {
         for await (const chunk of request) body += chunk;
         let result: unknown;
         if (request.url === "/api/list") {
+          listRequests++;
           const input = listSessions.input.parse(JSON.parse(body));
           result = await fixture.client.invokePluginRpc("codex-importer", listSessions.name, input);
         } else if (request.url === "/api/import") {
@@ -40,7 +42,7 @@ export async function startBrowserServer() {
             importSession.name,
             input,
           );
-        } else if (request.url === "/api/test/stats") result = { importRequests };
+        } else if (request.url === "/api/test/stats") result = { importRequests, listRequests };
         else if (request.url === "/api/test/disconnect") {
           await fixture.client.close();
           result = { ok: true };

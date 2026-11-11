@@ -1,7 +1,8 @@
 import type { RpcInput, RpcOutput } from "@getpaseo/plugin";
 import type { PluginTheme } from "@getpaseo/plugin";
 import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useReducer, useRef } from "react";
+import { useEffect, useMemo, useReducer, useRef } from "react";
+import { useTranslation } from "@getpaseo/plugin/client";
 import {
   ActivityIndicator,
   Pressable,
@@ -17,7 +18,8 @@ import type {
   SessionStatus,
   SessionSummary,
 } from "../shared/contracts.js";
-import { type ErrorCode, ImporterError } from "../shared/errors.js";
+import { ImporterError } from "../shared/errors.js";
+import { messages } from "./messages.js";
 
 export interface SessionPickerProps {
   hostId: string;
@@ -48,39 +50,30 @@ function filterReducer(state: Filters, action: FilterAction): Filters {
   return { ...state, status: action.value };
 }
 
-const errors: Record<ErrorCode, string> = {
-  codex_unavailable: "未找到 Codex CLI。请在 Paseo 主机上安装 Codex，并检查 PATH。",
-  codex_failed: "Codex 无法读取或恢复这条历史。请刷新列表；若仍失败，请检查 Codex 版本和历史文件。",
-  timeout: "请求超时。请刷新列表确认会话状态后重试。",
-  invalid_cursor: "历史列表已变化。请点击刷新，重新加载第一页。",
-  workspace_unavailable: "当前工作区不可用。请回到工作区后重新打开导入面板。",
-  wrong_directory: "该会话属于其他目录。请切换到对应工作区后导入。",
-  already_imported: "该会话已在 Paseo 中打开。请使用现有会话，或刷新列表。",
-  import_in_progress: "该会话正在导入，请等待完成。",
-  import_failed: "导入尚未完成。请刷新后重试；已恢复的 Codex 历史会保留在未归档列表。",
-  daemon_unavailable: "无法连接当前 Paseo 主机。请检查连接后重试。",
-  host_mismatch: "导入服务与当前主机不一致。请重新连接目标主机。",
-  configuration_invalid: "Codex 配置不可用。请检查 Paseo 中 Codex 的启用状态和启动命令。",
-  plugin_stopped: "插件已停止。请重新打开导入面板。",
-};
-
-function errorMessage(error: unknown) {
-  if (error instanceof ImporterError) return errors[error.code];
-  return "无法连接导入服务。请检查主机连接后重试。";
-}
-
 function firstCursor(): string | null {
   return null;
 }
 
-const statusChoices: ReadonlyArray<{ value: SessionStatus; label: string }> = [
-  { value: "all", label: "全部" },
-  { value: "archived", label: "已归档" },
-  { value: "active", label: "未归档" },
-];
+const statusChoices: ReadonlyArray<SessionStatus> = ["all", "archived", "active"];
 
 export function SessionPicker(props: SessionPickerProps) {
   const { colors } = props.theme;
+  const { t, locale } = useTranslation(messages);
+  const dateFormatter = useMemo(
+    () =>
+      new Intl.DateTimeFormat(locale, {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+    [locale],
+  );
+  function errorMessage(error: unknown) {
+    if (error instanceof ImporterError) return t(`errors.${error.code}`);
+    return t("errors.generic");
+  }
   const [filters, dispatch] = useReducer(filterReducer, { draft: "", query: "", status: "all" });
   const cache = useQueryClient();
   const pendingThread = useRef<string | null>(null);
@@ -156,7 +149,11 @@ export function SessionPicker(props: SessionPickerProps) {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.surface0 }}>
+    <View
+      testID="codex-session-picker"
+      accessibilityLanguage={locale}
+      style={{ flex: 1, backgroundColor: colors.surface0 }}
+    >
       <ScrollView
         contentContainerStyle={{
           padding: props.compact ? 16 : 24,
@@ -171,19 +168,20 @@ export function SessionPicker(props: SessionPickerProps) {
             accessibilityRole="header"
             style={{ ...text, fontSize: 22, lineHeight: 30, fontWeight: "600" }}
           >
-            导入 Codex 会话
+            {t("title")}
           </Text>
-          <Text style={muted}>查找当前目录的 Codex 历史，包括已归档的会话。</Text>
+          <Text style={muted}>{t("description")}</Text>
           <Text style={muted} numberOfLines={2}>
-            {props.workspaceName ?? "当前工作区"} · {props.directory ?? "工作区不可用"}
+            {props.workspaceName ?? t("currentWorkspace")} ·{" "}
+            {props.directory ?? t("workspaceUnavailable")}
           </Text>
         </View>
 
         <View style={{ gap: 12 }}>
           <View style={{ flexDirection: "row", gap: 8 }}>
             <TextInput
-              accessibilityLabel="搜索 Codex 会话标题"
-              placeholder="搜索会话标题…"
+              accessibilityLabel={t("searchLabel")}
+              placeholder={t("searchPlaceholder")}
               placeholderTextColor={colors.foregroundMuted}
               value={filters.draft}
               maxLength={200}
@@ -204,23 +202,24 @@ export function SessionPicker(props: SessionPickerProps) {
             />
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="搜索"
+              accessibilityLabel={t("search")}
               onPress={() => dispatch({ type: "search" })}
               style={{ ...control, backgroundColor: colors.surface1 }}
             >
-              <Text style={text}>搜索</Text>
+              <Text style={text}>{t("search")}</Text>
             </Pressable>
           </View>
           <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
-            {statusChoices.map((choice) => {
-              const selected = filters.status === choice.value;
+            {statusChoices.map((value) => {
+              const label = t(value);
+              const selected = filters.status === value;
               return (
                 <Pressable
-                  key={choice.value}
+                  key={value}
                   accessibilityRole="button"
-                  accessibilityLabel={choice.label}
+                  accessibilityLabel={label}
                   accessibilityState={{ selected }}
-                  onPress={() => dispatch({ type: "status", value: choice.value })}
+                  onPress={() => dispatch({ type: "status", value })}
                   style={{
                     ...control,
                     backgroundColor: selected ? colors.accent : colors.surface1,
@@ -232,7 +231,7 @@ export function SessionPicker(props: SessionPickerProps) {
                       color: selected ? colors.accentForeground : colors.foreground,
                     }}
                   >
-                    {choice.label}
+                    {label}
                   </Text>
                 </Pressable>
               );
@@ -240,7 +239,7 @@ export function SessionPicker(props: SessionPickerProps) {
             <View style={{ flex: 1 }} />
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="刷新列表"
+              accessibilityLabel={t("refreshLabel")}
               disabled={sessions.isFetching || importing.isPending}
               onPress={() => {
                 void cache.resetQueries({ queryKey });
@@ -248,7 +247,7 @@ export function SessionPicker(props: SessionPickerProps) {
               style={control}
             >
               <Text style={{ ...text, color: colors.accent }}>
-                {sessions.isFetching ? "加载中…" : "刷新"}
+                {sessions.isFetching ? t("loading") : t("refresh")}
               </Text>
             </Pressable>
           </View>
@@ -256,13 +255,13 @@ export function SessionPicker(props: SessionPickerProps) {
 
         {!props.directory ? (
           <Text accessibilityRole="alert" style={text}>
-            {errors.workspace_unavailable}
+            {t("errors.workspace_unavailable")}
           </Text>
         ) : null}
         {sessions.isError ? (
           <View accessibilityRole="alert" style={{ gap: 4 }}>
             <Text style={text}>{errorMessage(sessions.error)}</Text>
-            <Text style={muted}>点击“刷新”可重新查询。</Text>
+            <Text style={muted}>{t("retryList")}</Text>
           </View>
         ) : null}
         {importing.isError ? (
@@ -272,19 +271,19 @@ export function SessionPicker(props: SessionPickerProps) {
         ) : null}
         {importing.isSuccess ? (
           <View accessibilityLiveRegion="polite" style={{ gap: 4 }}>
-            <Text style={text}>会话已导入当前工作区。</Text>
+            <Text style={text}>{t("importSuccess")}</Text>
             {props.openAgent ? (
               <Pressable
                 accessibilityRole="button"
                 onPress={() => props.openAgent?.(importing.data.agentId)}
               >
-                <Text style={{ ...text, color: colors.accent }}>打开已导入的会话</Text>
+                <Text style={{ ...text, color: colors.accent }}>{t("openImported")}</Text>
               </Pressable>
             ) : null}
           </View>
         ) : null}
         {sessions.isPending && props.directory ? (
-          <ActivityIndicator accessibilityLabel="正在读取 Codex 历史" color={colors.accent} />
+          <ActivityIndicator accessibilityLabel={t("loadingHistory")} color={colors.accent} />
         ) : null}
 
         <View>
@@ -300,25 +299,19 @@ export function SessionPicker(props: SessionPickerProps) {
             >
               <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
                 <Text style={{ ...text, flex: 1, fontWeight: "500" }} numberOfLines={2}>
-                  {entry.title || "未命名 Codex 会话"}
+                  {entry.title || t("untitled")}
                 </Text>
                 <Text style={{ ...muted, fontSize: 12 }}>
-                  {entry.archived ? "已归档" : "未归档"}
+                  {entry.archived ? t("archived") : t("active")}
                 </Text>
               </View>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
                 <Text style={{ ...muted, flex: 1, fontSize: 12 }}>
-                  {new Date(entry.updatedAt * 1000).toLocaleString("zh-CN", {
-                    year: "numeric",
-                    month: "2-digit",
-                    day: "2-digit",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
+                  {dateFormatter.format(entry.updatedAt * 1000)}
                 </Text>
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel={`导入 ${entry.title || "未命名 Codex 会话"}`}
+                  accessibilityLabel={t("importLabel", { title: entry.title || t("untitled") })}
                   disabled={importing.isPending}
                   onPress={() => startImport(entry)}
                   style={{
@@ -329,8 +322,8 @@ export function SessionPicker(props: SessionPickerProps) {
                 >
                   <Text style={{ ...text, color: colors.accentForeground }}>
                     {importing.isPending && importing.variables.id === entry.id
-                      ? "正在导入…"
-                      : "导入"}
+                      ? t("importing")
+                      : t("import")}
                   </Text>
                 </Pressable>
               </View>
@@ -338,16 +331,12 @@ export function SessionPicker(props: SessionPickerProps) {
           ))}
         </View>
         {sessions.isSuccess && entries.length === 0 ? (
-          <Text style={muted}>
-            {sessions.hasNextPage
-              ? "当前批次中的会话已在 Paseo 中打开，可继续加载更早的历史。"
-              : "当前目录没有匹配的可导入会话。可切换归档状态、清空搜索或刷新列表。"}
-          </Text>
+          <Text style={muted}>{sessions.hasNextPage ? t("emptyMore") : t("empty")}</Text>
         ) : null}
         {sessions.hasNextPage ? (
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="加载更多会话"
+            accessibilityLabel={t("loadMoreLabel")}
             disabled={sessions.isFetching}
             onPress={() => {
               void sessions.fetchNextPage();
@@ -355,15 +344,13 @@ export function SessionPicker(props: SessionPickerProps) {
             style={{ ...control, alignSelf: "center" }}
           >
             <Text style={{ ...text, color: colors.accent }}>
-              {sessions.isFetchingNextPage ? "加载中…" : "加载更多"}
+              {sessions.isFetchingNextPage ? t("loading") : t("loadMore")}
             </Text>
           </Pressable>
         ) : null}
         <Text style={{ ...muted, fontSize: 12 }}>
-          {filteredCount > 0
-            ? `已过滤 ${filteredCount} 条在 Paseo 中打开的会话。`
-            : "已在 Paseo 中打开的会话不会重复显示。"}{" "}
-          仅点击导入时恢复所选会话。
+          {filteredCount > 0 ? t("filtered", { count: filteredCount }) : t("excluded")}{" "}
+          {t("restoreHint")}
         </Text>
       </ScrollView>
     </View>

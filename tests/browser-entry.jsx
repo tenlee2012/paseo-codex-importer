@@ -1,8 +1,33 @@
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
+import { PluginTranslationProvider, PluginTranslationRuntime } from "@getpaseo/plugin/client/host";
 import { createRoot } from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Text, View } from "react-native";
 import { SessionPicker } from "../client/session-picker.js";
+import { messages } from "../client/messages.js";
+import contribute from "../index.client.js";
+
+let appLocale = new URLSearchParams(window.location.search).get("lang") || "zh-CN";
+const listeners = new Set();
+const runtime = new PluginTranslationRuntime({
+  getLocale: () => appLocale,
+  subscribe(listener) {
+    listeners.add(listener);
+    return () => listeners.delete(listener);
+  },
+});
+let panelTitle;
+let commandTitle;
+contribute({
+  addWorkspacePanel(panel) {
+    panelTitle = panel.title;
+    return () => {};
+  },
+  addCommandCenterItem(command) {
+    commandTitle = command.title;
+    return () => {};
+  },
+});
 
 const dark = new URLSearchParams(window.location.search).get("theme") === "dark";
 const theme = {
@@ -31,8 +56,32 @@ function request(operation, input) {
 
 function Preview() {
   const [opened, setOpened] = useState(false);
+  const locale = useSyncExternalStore(runtime.subscribe, runtime.getSnapshot);
   return (
     <View style={{ height: "100%", backgroundColor: theme.colors.surface0 }}>
+      <View style={{ padding: 8, gap: 4 }}>
+        <select
+          aria-label="Preview language"
+          value={locale}
+          onChange={(event) => {
+            appLocale = event.target.value;
+            document.documentElement.lang = appLocale;
+            for (const listener of listeners) listener();
+          }}
+        >
+          {Object.keys(messages.resources).map((value) => (
+            <option key={value} value={value}>
+              {value}
+            </option>
+          ))}
+        </select>
+        <Text nativeID="preview-panel-title" style={{ color: theme.colors.foreground }}>
+          {runtime.resolve(panelTitle)}
+        </Text>
+        <Text nativeID="preview-command-title" style={{ color: theme.colors.foreground }}>
+          {runtime.resolve(commandTitle)}
+        </Text>
+      </View>
       {opened ? (
         <Text
           accessibilityLiveRegion="polite"
@@ -58,6 +107,8 @@ function Preview() {
 
 createRoot(document.getElementById("root")).render(
   <QueryClientProvider client={new QueryClient()}>
-    <Preview />
+    <PluginTranslationProvider runtime={runtime}>
+      <Preview />
+    </PluginTranslationProvider>
   </QueryClientProvider>,
 );
