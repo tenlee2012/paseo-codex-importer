@@ -61,6 +61,53 @@ function firstCursor(): string | null {
 const statusChoices: ReadonlyArray<SessionStatus> = ["all", "archived", "active"];
 const scopeChoices: ReadonlyArray<SessionScope> = ["workspace", "all"];
 
+function SessionFilterOption({
+  label,
+  selected,
+  onPress,
+  colors,
+}: {
+  label: string;
+  selected: boolean;
+  onPress(): void;
+  colors: PluginTheme["colors"];
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ selected }}
+      onPress={onPress}
+      // Keep a full touch target around the compact visible segment on every client.
+      style={{ minHeight: 44, minWidth: 44, justifyContent: "center" }}
+    >
+      {({ pressed }) => (
+        <View
+          style={{
+            minHeight: 28,
+            paddingHorizontal: 8,
+            paddingVertical: 4,
+            borderRadius: 6,
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: selected ? colors.surface2 : pressed ? colors.surface1 : "transparent",
+          }}
+        >
+          <Text
+            style={{
+              fontSize: 12,
+              lineHeight: 18,
+              color: selected ? colors.foreground : colors.foregroundMuted,
+            }}
+          >
+            {label}
+          </Text>
+        </View>
+      )}
+    </Pressable>
+  );
+}
+
 export function SessionPicker(props: SessionPickerProps) {
   const { colors } = props.theme;
   const { t, locale } = useTranslation(messages);
@@ -190,33 +237,22 @@ export function SessionPicker(props: SessionPickerProps) {
           </Text>
         </View>
 
-        <View style={{ gap: 12 }}>
-          <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
-            <Text style={muted}>{t("scopeLabel")}</Text>
+        <View style={{ gap: 8 }}>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 4 }}>
+            <Text style={{ ...muted, fontSize: 12, lineHeight: 18, marginEnd: 4 }}>
+              {t("scopeLabel")}
+            </Text>
             {scopeChoices.map((value) => {
               const selected = filters.scope === value;
               const label = t(value === "workspace" ? "currentWorkspace" : "allPaths");
               return (
-                <Pressable
+                <SessionFilterOption
                   key={value}
-                  accessibilityRole="button"
-                  accessibilityLabel={label}
-                  accessibilityState={{ selected }}
+                  label={label}
+                  selected={selected}
+                  colors={colors}
                   onPress={() => dispatch({ type: "scope", value })}
-                  style={{
-                    ...control,
-                    backgroundColor: selected ? colors.accent : colors.surface1,
-                  }}
-                >
-                  <Text
-                    style={{
-                      ...text,
-                      color: selected ? colors.accentForeground : colors.foreground,
-                    }}
-                  >
-                    {label}
-                  </Text>
-                </Pressable>
+                />
               );
             })}
           </View>
@@ -252,31 +288,18 @@ export function SessionPicker(props: SessionPickerProps) {
               <Text style={text}>{t("search")}</Text>
             </Pressable>
           </View>
-          <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 4 }}>
             {statusChoices.map((value) => {
               const label = t(value);
               const selected = filters.status === value;
               return (
-                <Pressable
+                <SessionFilterOption
                   key={value}
-                  accessibilityRole="button"
-                  accessibilityLabel={label}
-                  accessibilityState={{ selected }}
+                  label={label}
+                  selected={selected}
+                  colors={colors}
                   onPress={() => dispatch({ type: "status", value })}
-                  style={{
-                    ...control,
-                    backgroundColor: selected ? colors.accent : colors.surface1,
-                  }}
-                >
-                  <Text
-                    style={{
-                      ...text,
-                      color: selected ? colors.accentForeground : colors.foreground,
-                    }}
-                  >
-                    {label}
-                  </Text>
-                </Pressable>
+                />
               );
             })}
             <View style={{ flex: 1 }} />

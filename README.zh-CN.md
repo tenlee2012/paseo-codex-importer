@@ -24,7 +24,7 @@ paseo plugin install github:tenlee2012/paseo-codex-importer
 paseo plugin update codex-importer
 ```
 
-安装本次发布版本可在安装命令后加 `--ref v0.2.0`。现有安装也可执行 `paseo plugin update codex-importer --ref v0.2.0`，直接更新到指定版本。
+安装本次发布版本可在安装命令后加 `--ref v0.2.1`。现有安装也可执行 `paseo plugin update codex-importer --ref v0.2.1`，直接更新到指定版本。
 
 ## 使用
 

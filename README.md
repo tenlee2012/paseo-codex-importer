@@ -24,7 +24,7 @@ For an existing GitHub installation, review and apply the update with:
 paseo plugin update codex-importer
 ```
 
-To install this release directly, add `--ref v0.2.0` to the install command. To update an existing installation to this release without a prompt, use `paseo plugin update codex-importer --ref v0.2.0`.
+To install this release directly, add `--ref v0.2.1` to the install command. To update an existing installation to this release without a prompt, use `paseo plugin update codex-importer --ref v0.2.1`.
 
 ## Use
 

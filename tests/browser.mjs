@@ -56,7 +56,7 @@ try {
   const beforeSwitch = await (await page.request.get(`${server.url}/api/test/stats`)).json();
   const selectedFilterColor = await page
     .getByRole("button", { name: "已归档", exact: true })
-    .evaluate((element) => getComputedStyle(element).backgroundColor);
+    .evaluate((element) => getComputedStyle(element.firstElementChild).backgroundColor);
   for (const locale of ["en", "ar", "es", "fr", "ja", "ko", "pt-BR", "ru", "zh-CN"]) {
     const text = JSON.parse(
       await readFile(new URL(`../client/locales/${locale}.json`, import.meta.url), "utf8"),
@@ -76,7 +76,7 @@ try {
     assert.equal(
       await page
         .getByRole("button", { name: text.archived, exact: true })
-        .evaluate((element) => getComputedStyle(element).backgroundColor),
+        .evaluate((element) => getComputedStyle(element.firstElementChild).backgroundColor),
       selectedFilterColor,
     );
     assert.equal(
@@ -212,12 +212,15 @@ try {
   await page
     .getByText("History was copied into a new session in the current workspace.", { exact: true })
     .waitFor({ timeout: 60_000 });
-  await page.waitForFunction(
-    () =>
-      !Array.from(document.querySelectorAll('[role="button"]')).some(
-        (element) =>
-          element.getAttribute("aria-label") === "Import Archived history from another project",
-      ),
+  // Wait for the refreshed list, not the temporary empty state while it loads.
+  await page
+    .getByRole("button", { name: "Import Investigate sample test failure", exact: true })
+    .waitFor();
+  assert.equal(
+    await page
+      .getByRole("button", { name: "Import Archived history from another project", exact: true })
+      .count(),
+    0,
   );
   const copiedStats = await (await page.request.get(`${server.url}/api/test/stats`)).json();
   assert.equal(copiedStats.importRequests, 2);
