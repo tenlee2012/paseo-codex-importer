@@ -24,22 +24,27 @@ For an existing GitHub installation, review and apply the update with:
 paseo plugin update codex-importer
 ```
 
-To install this release directly, add `--ref v0.1.1` to the install command. To update an existing installation to this release without a prompt, use `paseo plugin update codex-importer --ref v0.1.1`.
+To install this release directly, add `--ref v0.2.0` to the install command. To update an existing installation to this release without a prompt, use `paseo plugin update codex-importer --ref v0.2.0`.
 
 ## Use
 
-1. Open the workspace for the conversation's original working directory.
+1. Open the workspace where you want to continue the conversation.
 2. Select **+ → Import Codex sessions**. The action is also available in the Command Center.
-3. Search by title or choose **All**, **Archived**, or **Unarchived**.
-4. Click **Import**. The importer restores an archived native thread and opens it through Paseo's existing import flow. Labels use your Paseo language.
+3. **Current workspace** is selected by default. Switch to **All paths** to include history from other directories on this host. Each row then shows its original directory; the import destination stays visible above the filters.
+4. Search by title or choose **All**, **Archived**, or **Unarchived**. The path and archive filters are independent. Changing paths starts pagination for that scope while keeping the search and archive filter.
+5. Click **Import**. Every successful import belongs to the workspace that opened this panel and uses its directory for subsequent work.
 
-The list includes non-subagent CLI, editor, app-server, and exec history for the current directory. It follows Codex pagination and orders conversations by last update. Title search follows Codex's search behavior, including case sensitivity. Directory aliases are checked with filesystem real paths.
+For the **same directory**, the importer restores the original native Codex thread. Its thread ID stays unchanged. Paseo reuses a matching archived agent with the same provider and directory, even when the destination workspace differs. Directory aliases are compared using filesystem real paths.
 
-Native Codex thread IDs remain unchanged. For a matching archived Paseo agent using the same provider and directory, Paseo restores the existing agent ID. Conversations already owned by active Paseo agents, including configured providers extending Codex, are excluded across workspaces. Importing from this panel uses the built-in `codex` provider.
+For a **different directory**, the importer uses Codex's native fork operation to copy stored history into a **new thread ID** in the current workspace. It preserves a custom conversation title when one exists. The source conversation and its previous Paseo workspace are retained. Codex requires an archived source to be temporarily unarchived for a fork; the importer re-archives it before importing the copy. It does not copy project files. A copied conversation subsequently closed in the current directory can be restored there as the same session.
 
-Opening or searching the panel does not unarchive history. Importing restores only the selected thread. Closing an agent tab still follows Paseo's archive behavior; you can find it again with this plugin.
+The list includes non-subagent CLI, editor, app-server, and exec history from the selected host's configured Codex home. It follows Codex pagination and orders conversations by last update. Title search follows Codex's search behavior, including case sensitivity. **All paths** changes the directory filter, not the selected host or Codex configuration.
 
-If native restoration succeeds but Paseo import fails, the thread may remain unarchived in Codex. Refresh the list before retrying. Moving history into a different working directory is outside this plugin's scope.
+Conversations already owned by active Paseo agents, including configured providers extending Codex, are excluded across workspaces. When a copy is already open in the current workspace, its source is also excluded there to prevent duplicate imports. That source remains available in other workspaces. Importing from this panel uses the built-in `codex` provider and its current configuration.
+
+Opening or searching the panel does not change archive state. Importing affects only the selected history. Closing an agent tab still follows Paseo's archive behavior; you can find it again with this plugin.
+
+If preparation succeeds but Paseo import fails, restored or copied history may remain in Codex. Refresh **Current workspace → Unarchived** to find the prepared copy before trying the source again. If restoring the source's archive state fails, or the plugin stops during a copy, check the original conversation's archive state before retrying. A reported success means the returned agent's workspace and working directory both match the destination.
 
 ## Language
 
@@ -72,7 +77,7 @@ npm run check:privacy
 
 Install the Paseo and Codex CLIs before running integration checks. Browser checks require Playwright Chromium (`npx playwright install chromium`) or `PLAYWRIGHT_CHROMIUM_EXECUTABLE` pointing to an existing Chromium executable.
 
-Tests create isolated temporary Codex homes and a separate Paseo daemon on an automatically assigned loopback port. They use synthetic rollout files, start no model turns, and stop only their own temporary daemon. Translation tests use Paseo's real translation engine. Browser checks exercise the real component and plugin RPCs, all nine live languages, independent client languages, locale dates, and preserved query state. Temporary browser bundles and diagnostics go to the ignored `.artifacts/` directory.
+Tests create isolated temporary Codex homes and a separate Paseo daemon on an automatically assigned loopback port. They use synthetic rollout files, start no model turns, and stop only their own temporary daemon. Translation tests use Paseo's real translation engine. Browser checks exercise the real component and plugin RPCs, all nine live languages, independent client languages, locale dates, preserved query state, path-scoped pagination, and same-directory restoration versus cross-directory copying. Temporary browser bundles and diagnostics go to the ignored `.artifacts/` directory.
 
 Install your checkout with `paseo plugin install /absolute/path/to/checkout`. After source changes, run `paseo plugin reload codex-importer`; a daemon restart is unnecessary.
 

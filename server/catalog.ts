@@ -26,7 +26,7 @@ const cursorSchema = z.object({
 
 export interface CatalogInput {
   workspaceId: string;
-  directories: string[];
+  directories: string[] | null;
   query: string;
   status: SessionStatus;
   cursor: string | null;
@@ -54,7 +54,7 @@ class ThreadStream {
           sortKey: "updated_at",
           modelProviders: [],
           sourceKinds: ["cli", "vscode", "appServer", "exec", "unknown"],
-          cwd: this.input.directories,
+          ...(this.input.directories ? { cwd: this.input.directories } : {}),
           ...(this.input.query ? { searchTerm: this.input.query } : {}),
         });
         const parsed = threadPageSchema.safeParse(raw);
@@ -134,7 +134,7 @@ export async function readCatalog(
     entries.push({
       id: item.id,
       title: title.slice(0, 200),
-      cwd: item.cwd ?? input.directories[0],
+      cwd: item.cwd ?? "",
       updatedAt: item.updatedAt,
       archived: stream.archived,
     });

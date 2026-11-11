@@ -1,6 +1,6 @@
 import { mkdir, mkdtemp, rm, utimes, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { isAbsolute, join, resolve } from "node:path";
 
 export interface FixtureSession {
   id: string;
@@ -18,6 +18,9 @@ export async function createCodexFixture(sessions: FixtureSession[]) {
   await mkdir(home, { recursive: true });
   await writeFile(join(home, "config.toml"), 'model = "gpt-6.1-sol"\n');
   for (const session of sessions) {
+    const directory = session.directory ? resolve(root, session.directory) : workspace;
+    if (session.directory && !isAbsolute(session.directory))
+      await mkdir(directory, { recursive: true });
     const folder = session.archived
       ? join(home, "archived_sessions")
       : join(home, "sessions", "2026", "01", "01");
@@ -30,7 +33,7 @@ export async function createCodexFixture(sessions: FixtureSession[]) {
         payload: {
           id: session.id,
           timestamp,
-          cwd: session.directory ?? workspace,
+          cwd: directory,
           originator: "codex_cli_rs",
           cli_version: "0.167.0",
           source: "cli",
@@ -57,8 +60,14 @@ export async function createCodexFixture(sessions: FixtureSession[]) {
         payload: {
           type: "message",
           role: "assistant",
+          phase: "final_answer",
           content: [{ type: "output_text", text: "This is synthetic test history." }],
         },
+      },
+      {
+        timestamp,
+        type: "event_msg",
+        payload: { type: "agent_message", message: "This is synthetic test history." },
       },
     ];
     const file = join(folder, `rollout-2026-01-01T00-00-00-${session.id}.jsonl`);

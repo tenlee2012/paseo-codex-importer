@@ -11,7 +11,22 @@ test("real Codex pagination merges both archive states without omissions and sco
     updatedAt: 1767268800 - index * 60,
     archived: index % 2 === 0,
   }));
-  const fixture = await createCodexFixture(samples);
+  const foreign = [
+    {
+      id: "55555555-5555-4555-8555-fffffffffff1",
+      title: "Sample other project newest",
+      updatedAt: 1767268860,
+      archived: true,
+      directory: "/example/other-project",
+    },
+    {
+      id: "55555555-5555-4555-8555-fffffffffff2",
+      title: "Sample other project oldest",
+      updatedAt: 1767200000,
+      directory: "/example/other-project",
+    },
+  ];
+  const fixture = await createCodexFixture([...samples, ...foreign]);
   const codex = await CodexConnection.open(fixture.launch);
   const input = {
     workspaceId: "sample-workspace",
@@ -40,6 +55,27 @@ test("real Codex pagination merges both archive states without omissions and sco
     const filtered = await readCatalog(codex, { ...input, excluded });
     expect(filtered.filteredCount).toBe(4);
     expect(filtered.entries.map(({ id }) => id)).toEqual(samples.slice(4, 54).map(({ id }) => id));
+
+    const all = await readCatalog(codex, { ...input, directories: null });
+    const allNext = await readCatalog(codex, {
+      ...input,
+      directories: null,
+      cursor: all.nextCursor,
+    });
+    expect([...all.entries, ...allNext.entries].map(({ id }) => id)).toEqual(
+      [foreign[0], ...samples, foreign[1]].map(({ id }) => id),
+    );
+    expect(allNext.nextCursor).toBeNull();
+    await expect(readCatalog(codex, { ...input, cursor: all.nextCursor })).rejects.toEqual(
+      new ImporterError("invalid_cursor"),
+    );
+    const foreignSearch = await readCatalog(codex, {
+      ...input,
+      directories: null,
+      query: "other project",
+      status: "archived",
+    });
+    expect(foreignSearch.entries.map(({ id }) => id)).toEqual([foreign[0].id]);
   } finally {
     await codex.close();
     await fixture.cleanup();

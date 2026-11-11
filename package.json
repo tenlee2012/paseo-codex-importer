@@ -1,6 +1,6 @@
 {
   "name": "paseo-codex-importer",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Import active and archived local Codex sessions into Paseo.",
   "type": "module",
   "license": "MIT",

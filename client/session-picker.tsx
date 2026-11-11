@@ -16,6 +16,7 @@ import type {
   importSession,
   listSessions,
   SessionStatus,
+  SessionScope,
   SessionSummary,
 } from "../shared/contracts.js";
 import { ImporterError } from "../shared/errors.js";
@@ -37,16 +38,19 @@ interface Filters {
   draft: string;
   query: string;
   status: SessionStatus;
+  scope: SessionScope;
 }
 
 type FilterAction =
   | { type: "draft"; value: string }
   | { type: "search" }
+  | { type: "scope"; value: SessionScope }
   | { type: "status"; value: SessionStatus };
 
 function filterReducer(state: Filters, action: FilterAction): Filters {
   if (action.type === "draft") return { ...state, draft: action.value };
   if (action.type === "search") return { ...state, query: state.draft.trim() };
+  if (action.type === "scope") return { ...state, scope: action.value };
   return { ...state, status: action.value };
 }
 
@@ -55,6 +59,7 @@ function firstCursor(): string | null {
 }
 
 const statusChoices: ReadonlyArray<SessionStatus> = ["all", "archived", "active"];
+const scopeChoices: ReadonlyArray<SessionScope> = ["workspace", "all"];
 
 export function SessionPicker(props: SessionPickerProps) {
   const { colors } = props.theme;
@@ -74,7 +79,12 @@ export function SessionPicker(props: SessionPickerProps) {
     if (error instanceof ImporterError) return t(`errors.${error.code}`);
     return t("errors.generic");
   }
-  const [filters, dispatch] = useReducer(filterReducer, { draft: "", query: "", status: "all" });
+  const [filters, dispatch] = useReducer(filterReducer, {
+    draft: "",
+    query: "",
+    status: "all",
+    scope: "workspace",
+  });
   const cache = useQueryClient();
   const pendingThread = useRef<string | null>(null);
   const mounted = useRef(true);
@@ -85,13 +95,14 @@ export function SessionPicker(props: SessionPickerProps) {
     };
   }, []);
   const queryPrefix = ["codex-importer", props.hostId, props.workspaceId];
-  const queryKey = [...queryPrefix, props.directory, filters.status, filters.query];
+  const queryKey = [...queryPrefix, props.directory, filters.scope, filters.status, filters.query];
   const sessions = useInfiniteQuery({
     queryKey,
     initialPageParam: firstCursor(),
     queryFn: async ({ pageParam }) => {
       const result = await props.list({
         workspaceId: props.workspaceId,
+        scope: filters.scope,
         status: filters.status,
         query: filters.query,
         cursor: pageParam,
@@ -172,12 +183,44 @@ export function SessionPicker(props: SessionPickerProps) {
           </Text>
           <Text style={muted}>{t("description")}</Text>
           <Text style={muted} numberOfLines={2}>
-            {props.workspaceName ?? t("currentWorkspace")} ·{" "}
-            {props.directory ?? t("workspaceUnavailable")}
+            {t("destination", {
+              workspace: props.workspaceName ?? t("currentWorkspace"),
+              directory: props.directory ?? t("workspaceUnavailable"),
+            })}
           </Text>
         </View>
 
         <View style={{ gap: 12 }}>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
+            <Text style={muted}>{t("scopeLabel")}</Text>
+            {scopeChoices.map((value) => {
+              const selected = filters.scope === value;
+              const label = t(value === "workspace" ? "currentWorkspace" : "allPaths");
+              return (
+                <Pressable
+                  key={value}
+                  accessibilityRole="button"
+                  accessibilityLabel={label}
+                  accessibilityState={{ selected }}
+                  onPress={() => dispatch({ type: "scope", value })}
+                  style={{
+                    ...control,
+                    backgroundColor: selected ? colors.accent : colors.surface1,
+                  }}
+                >
+                  <Text
+                    style={{
+                      ...text,
+                      color: selected ? colors.accentForeground : colors.foreground,
+                    }}
+                  >
+                    {label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+          {filters.scope === "all" ? <Text style={muted}>{t("crossDirectoryHint")}</Text> : null}
           <View style={{ flexDirection: "row", gap: 8 }}>
             <TextInput
               accessibilityLabel={t("searchLabel")}
@@ -271,7 +314,7 @@ export function SessionPicker(props: SessionPickerProps) {
         ) : null}
         {importing.isSuccess ? (
           <View accessibilityLiveRegion="polite" style={{ gap: 4 }}>
-            <Text style={text}>{t("importSuccess")}</Text>
+            <Text style={text}>{t(importing.data.copied ? "copySuccess" : "importSuccess")}</Text>
             {props.openAgent ? (
               <Pressable
                 accessibilityRole="button"
@@ -305,6 +348,11 @@ export function SessionPicker(props: SessionPickerProps) {
                   {entry.archived ? t("archived") : t("active")}
                 </Text>
               </View>
+              {filters.scope === "all" ? (
+                <Text style={{ ...muted, fontSize: 12 }} numberOfLines={2}>
+                  {t("sourceDirectory", { directory: entry.cwd || t("unknownDirectory") })}
+                </Text>
+              ) : null}
               <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
                 <Text style={{ ...muted, flex: 1, fontSize: 12 }}>
                   {dateFormatter.format(entry.updatedAt * 1000)}

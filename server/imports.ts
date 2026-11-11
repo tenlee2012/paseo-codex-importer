@@ -10,6 +10,8 @@ import { readCatalog } from "./catalog.js";
 import { CodexConnection, type CodexLaunch, threadSchema } from "./codex.js";
 import { connectImportClient, type ImportClient } from "./daemon.js";
 
+const SOURCE_THREAD_LABEL = "codex-importer.source-thread";
+
 interface Destination {
   workspaceId: string;
   cwd: string;
@@ -79,7 +81,11 @@ export class SessionImports {
     };
   }
 
-  private async activeSessions(paseo: PaseoApi, providers: ReadonlySet<string>) {
+  private async activeSessions(
+    paseo: PaseoApi,
+    providers: ReadonlySet<string>,
+    workspaceId: string,
+  ) {
     const ids = new Set<string>();
     const seen = new Set<string>();
     let cursor: string | undefined;
@@ -96,6 +102,9 @@ export class SessionImports {
           agent.persistence?.sessionId ??
           agent.runtimeInfo?.sessionId;
         if (id) ids.add(id);
+        // A copied source is excluded only in the workspace that received its copy.
+        const source = agent.labels[SOURCE_THREAD_LABEL];
+        if (source && agent.workspaceId === workspaceId) ids.add(source);
       }
       if (!page.pageInfo.hasMore) break;
       const next = page.pageInfo.nextCursor;
@@ -127,8 +136,13 @@ export class SessionImports {
   async list(paseo: PaseoApi, input: RpcInput<typeof listSessions>) {
     const destination = await this.destination(paseo, input.workspaceId);
     const configuration = await this.configuration(paseo, destination);
-    const excluded = await this.activeSessions(paseo, configuration.providers);
-    const directories = [...new Set([destination.cwd, destination.canonicalCwd])];
+    const excluded = await this.activeSessions(
+      paseo,
+      configuration.providers,
+      destination.workspaceId,
+    );
+    const directories =
+      input.scope === "all" ? null : [...new Set([destination.cwd, destination.canonicalCwd])];
     return this.withCodex(configuration.launch, (connection) =>
       readCatalog(connection, { ...input, directories, excluded, query: input.query.trim() }),
     );
@@ -138,7 +152,11 @@ export class SessionImports {
     if (this.importing.has(input.threadId)) throw new ImporterError("import_in_progress");
     const destination = await this.destination(paseo, input.workspaceId);
     const configuration = await this.configuration(paseo, destination);
-    if ((await this.activeSessions(paseo, configuration.providers)).has(input.threadId))
+    if (
+      (await this.activeSessions(paseo, configuration.providers, destination.workspaceId)).has(
+        input.threadId,
+      )
+    )
       throw new ImporterError("already_imported");
     // Recheck after the awaits; separate clients can click the same native thread concurrently.
     if (this.importing.has(input.threadId)) throw new ImporterError("import_in_progress");
@@ -150,29 +168,72 @@ export class SessionImports {
       if (this.stopped) throw new ImporterError("plugin_stopped");
       this.clients.add(client);
       const importer = client;
-      return await this.withCodex(configuration.launch, async (connection) => {
-        const raw = await connection.request("thread/read", { threadId: input.threadId });
-        const parsed = z.object({ thread: threadSchema }).safeParse(raw);
-        if (!parsed.success) throw new ImporterError("codex_failed");
-        const { thread } = parsed.data;
-        if (!thread.cwd || (await canonicalDirectory(thread.cwd)) !== destination.canonicalCwd) {
-          throw new ImporterError("wrong_directory");
-        }
-        if (input.archived)
-          await connection.request("thread/unarchive", { threadId: input.threadId });
-        const agent = await importer
-          .importAgent({
-            providerId: "codex",
-            providerHandleId: input.threadId,
-            cwd: destination.cwd,
-            workspaceId: destination.workspaceId,
-          })
-          .catch(() => {
-            throw new ImporterError("import_failed");
-          });
-        if (agent.workspaceId !== destination.workspaceId) throw new ImporterError("import_failed");
-        return { ok: true as const, agentId: agent.id, workspaceId: destination.workspaceId };
-      });
+      const { threadId, copied } = await this.withCodex(
+        configuration.launch,
+        async (connection) => {
+          const raw = await connection.request("thread/read", { threadId: input.threadId });
+          const parsed = z.object({ thread: threadSchema }).safeParse(raw);
+          if (!parsed.success) throw new ImporterError("codex_failed");
+          const { thread } = parsed.data;
+          const copied =
+            !thread.cwd || (await canonicalDirectory(thread.cwd)) !== destination.canonicalCwd;
+          let threadId = input.threadId;
+          if (input.archived)
+            await connection.request("thread/unarchive", { threadId: input.threadId });
+          if (copied) {
+            try {
+              const forked = z.object({ thread: threadSchema }).safeParse(
+                await connection.request("thread/fork", {
+                  threadId: input.threadId,
+                  cwd: destination.cwd,
+                  excludeTurns: true,
+                }),
+              );
+              if (!forked.success || forked.data.thread.id === input.threadId)
+                throw new ImporterError("codex_failed");
+              const fork = forked.data.thread;
+              if (!fork.cwd || (await canonicalDirectory(fork.cwd)) !== destination.canonicalCwd)
+                throw new ImporterError("wrong_directory");
+              threadId = fork.id;
+            } finally {
+              // Codex requires an archived source to be active while forking it.
+              if (input.archived)
+                await connection
+                  .request("thread/archive", { threadId: input.threadId })
+                  .catch(() => {
+                    throw new ImporterError("source_restore_failed");
+                  });
+            }
+            if (thread.name)
+              await connection.request("thread/name/set", { threadId, name: thread.name });
+          }
+          return { threadId, copied };
+        },
+      );
+      // Release the fork runtime before Paseo resumes the new thread.
+      if (this.stopped) throw new ImporterError("plugin_stopped");
+      const agent = await importer
+        .importAgent({
+          providerId: "codex",
+          providerHandleId: threadId,
+          cwd: destination.cwd,
+          workspaceId: destination.workspaceId,
+          ...(copied ? { labels: { [SOURCE_THREAD_LABEL]: input.threadId } } : {}),
+        })
+        .catch(() => {
+          throw new ImporterError("import_failed");
+        });
+      if (
+        agent.workspaceId !== destination.workspaceId ||
+        (await canonicalDirectory(agent.cwd)) !== destination.canonicalCwd
+      )
+        throw new ImporterError("import_failed");
+      return {
+        ok: true as const,
+        agentId: agent.id,
+        workspaceId: destination.workspaceId,
+        copied,
+      };
     } finally {
       this.importing.delete(input.threadId);
       if (client) {

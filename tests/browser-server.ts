@@ -15,7 +15,22 @@ export async function startBrowserServer() {
   sessions[0].title = "Review sample pull request";
   sessions[1].title = "Plan sample documentation update";
   sessions[2].title = "Investigate sample test failure";
-  const fixture = await createDaemonFixture(sessions);
+  const fixture = await createDaemonFixture([
+    ...sessions,
+    {
+      id: "44444444-4444-4444-8444-fffffffffff1",
+      title: "Archived history from another project",
+      archived: true,
+      updatedAt: 1767268860,
+      directory: "/example/other-project",
+    },
+    {
+      id: "44444444-4444-4444-8444-fffffffffff2",
+      title: "Unarchived history from another project",
+      updatedAt: 1767268830,
+      directory: "/example/other-project",
+    },
+  ]);
   let importRequests = 0;
   let listRequests = 0;
   const server = createServer(async (request, response) => {

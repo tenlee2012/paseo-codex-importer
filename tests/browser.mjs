@@ -39,6 +39,10 @@ try {
   await page.getByRole("button", { name: "加载更多会话", exact: true }).click();
   await page.getByRole("button", { name: "导入 Sample conversation 53", exact: true }).waitFor();
   assert.equal(await page.getByRole("button", { name: /^导入 / }).count(), 53);
+  assert.equal(
+    await page.getByText("Archived history from another project", { exact: true }).count(),
+    0,
+  );
 
   await page.getByRole("button", { name: "已归档", exact: true }).click();
   await page.getByText("Review sample pull request", { exact: true }).waitFor();
@@ -61,6 +65,10 @@ try {
     await page.getByRole("heading", { name: text.title, exact: true }).waitFor();
     assert.equal(await page.locator("#preview-panel-title").innerText(), text.title);
     assert.equal(await page.locator("#preview-command-title").innerText(), text.commandTitle);
+    assert.equal(
+      await page.getByRole("button", { name: text.allPaths, exact: true }).isVisible(),
+      true,
+    );
     assert.equal(
       await page.getByRole("textbox", { name: text.searchLabel }).inputValue(),
       "pending draft",
@@ -98,6 +106,37 @@ try {
   await page.waitForFunction(
     () => document.querySelectorAll('[role="button"][aria-label^="Import "]').length === 50,
   );
+  await page.getByRole("button", { name: "All paths", exact: true }).click();
+  await page.getByText("Archived history from another project", { exact: true }).waitFor();
+  await page.getByRole("button", { name: "Load more sessions", exact: true }).click();
+  await page.waitForFunction(
+    () => document.querySelectorAll('[role="button"][aria-label^="Import "]').length === 55,
+  );
+  await page.getByRole("button", { name: "Current workspace", exact: true }).click();
+  await page.waitForFunction(
+    () => document.querySelectorAll('[role="button"][aria-label^="Import "]').length === 50,
+  );
+  assert.equal(
+    await page.getByText("Archived history from another project", { exact: true }).count(),
+    0,
+  );
+  await page.getByRole("button", { name: "Archived", exact: true }).click();
+  await page.getByRole("textbox", { name: "Search Codex session titles" }).fill("another project");
+  await page.getByRole("button", { name: "Search", exact: true }).click();
+  await page.waitForFunction(
+    () => document.querySelectorAll('[role="button"][aria-label^="Import "]').length === 0,
+  );
+  await page.getByRole("button", { name: "All paths", exact: true }).click();
+  await page.getByText("Archived history from another project", { exact: true }).waitFor();
+  assert.equal(await page.getByRole("button", { name: /^Import / }).count(), 1);
+  assert.equal(
+    await page.getByRole("textbox", { name: "Search Codex session titles" }).inputValue(),
+    "another project",
+  );
+  await page.getByRole("textbox", { name: "Search Codex session titles" }).fill("");
+  await page.getByRole("button", { name: "Search", exact: true }).click();
+  await page.getByRole("button", { name: "All", exact: true }).click();
+  await page.getByText("Unarchived history from another project", { exact: true }).waitFor();
   await page
     .getByTestId("codex-session-picker")
     .screenshot({ path: ".artifacts/desktop-light.png" });
@@ -121,12 +160,27 @@ try {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(`${server.url}/?theme=dark`);
   await page.getByText("Review sample pull request", { exact: true }).waitFor();
+  assert.equal(
+    await page.getByText("Archived history from another project", { exact: true }).count(),
+    0,
+  );
+  await page.getByRole("button", { name: "所有路径", exact: true }).click();
+  await page.getByText("Archived history from another project", { exact: true }).waitFor();
   for (const locale of ["en", "ar", "es", "fr", "ja", "ko", "pt-BR", "ru", "zh-CN"]) {
     const text = JSON.parse(
       await readFile(new URL(`../client/locales/${locale}.json`, import.meta.url), "utf8"),
     );
     await page.getByRole("combobox", { name: "Preview language" }).selectOption(locale);
     await page.getByRole("heading", { name: text.title, exact: true }).waitFor();
+    await page.getByText(text.crossDirectoryHint, { exact: true }).waitFor();
+    assert.equal(
+      await page
+        .getByText(text.sourceDirectory.replace("{{directory}}", "/example/other-project"), {
+          exact: true,
+        })
+        .count(),
+      2,
+    );
     assert.equal(
       await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
       true,
@@ -152,6 +206,25 @@ try {
     .waitFor();
   await page.getByText(/^Hidden 1 session already open in Paseo\. /).waitFor();
 
+  await page
+    .getByRole("button", { name: "Import Archived history from another project", exact: true })
+    .click({ clickCount: 2 });
+  await page
+    .getByText("History was copied into a new session in the current workspace.", { exact: true })
+    .waitFor({ timeout: 60_000 });
+  await page.waitForFunction(
+    () =>
+      !Array.from(document.querySelectorAll('[role="button"]')).some(
+        (element) =>
+          element.getAttribute("aria-label") === "Import Archived history from another project",
+      ),
+  );
+  const copiedStats = await (await page.request.get(`${server.url}/api/test/stats`)).json();
+  assert.equal(copiedStats.importRequests, 2);
+  await page.getByRole("combobox", { name: "Preview language" }).selectOption("zh-CN");
+  await page.getByText("历史已复制为新会话，并导入当前工作区。", { exact: true }).waitFor();
+  await page.getByRole("combobox", { name: "Preview language" }).selectOption("en");
+
   await page.request.post(`${server.url}/api/test/disconnect`);
   await page
     .getByRole("button", { name: "Import Investigate sample test failure", exact: true })
@@ -171,7 +244,7 @@ try {
   );
   assert.deepEqual(failures, []);
   process.stdout.write(
-    "Browser checks passed: nine live locales, translated host labels, locale dates, preserved drafts/filters/cache, independent clients, pagination, import, duplicate prevention, localized success/error states, and wide/compact layouts.\n",
+    "Browser checks passed: current/all paths, scoped pagination and search, original-directory labels, same-directory restore, cross-directory copy, duplicate prevention, nine live locales, preserved state, and wide/compact layouts.\n",
   );
 } catch (error) {
   await page.screenshot({ path: ".artifacts/browser-failure.png" });

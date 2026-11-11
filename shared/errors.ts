@@ -10,6 +10,7 @@ export const errorCodeSchema = z.enum([
   "already_imported",
   "import_in_progress",
   "import_failed",
+  "source_restore_failed",
   "daemon_unavailable",
   "host_mismatch",
   "configuration_invalid",

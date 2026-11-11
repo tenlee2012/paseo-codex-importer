@@ -12,7 +12,7 @@ Before publishing:
 
 The automated scan detects common credentials, personal home paths, unexpected file types and private dependency sources. It does not replace a review of text or images. Its output names offending files without printing their contents.
 
-At runtime, the plugin reads Codex session metadata from the selected daemon's local app-server. Restoring a selected archived session changes native Codex state. Paseo performs the actual agent import and history hydration. Listing and importing do not submit a model turn.
+At runtime, the plugin reads Codex session metadata from the selected daemon's local app-server. The default directory scope is the current workspace; All paths exposes metadata from other directories in the same configured Codex home to that authorized client. Same-directory restoration changes the selected native thread's archive state. Cross-directory import creates a new thread with copied history; an archived source is temporarily unarchived and re-archived. The resulting Paseo agent stores a local source-thread label to prevent duplicate copies in that workspace. Paseo performs the actual agent import and history hydration. Listing and importing do not submit a model turn.
 
 The server reads local Paseo connection credentials for the official Node import client because the high-level plugin API does not expose native-session import. These credentials remain on the daemon. Raw provider errors and stderr are discarded. The frontend receives structured error codes and the session summary required by its UI.
 
